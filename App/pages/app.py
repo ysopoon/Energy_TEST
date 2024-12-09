@@ -10,18 +10,28 @@ import plotly.graph_objects as go
 #@st.cache_data
 filepath = './Data'
 
-df_energy = pd.read_csv(
-    os.path.join(filepath, 'energy_dataset.csv'), 
-    parse_dates=['time']
-)
-df_energy['time'] = pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
+try:
+    df_energy = pd.read_csv(
+        os.path.join(filepath, 'energy_dataset.csv'), 
+        parse_dates=['time']
+    )
+    try:
+        df_energy = pd.read_csv(
+            os.path.join('../Data' 'energy_dataset.csv'), 
+            parse_dates=['time']
+        ) 
+    except:
+        print("sth is wrong")
+except:
+    print("many things are wrong")
+pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
 
-df_weather = pd.read_csv(
-    os.path.join(filepath, 'weather_features.csv'), 
-    parse_dates=['dt_iso']
-)
-df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
-df_weather['temp_C'] = df_weather.temp - 273 
+# df_weather = pd.read_csv(
+#     os.path.join(filepath, 'weather_features.csv'), 
+#     parse_dates=['dt_iso']
+# )
+# df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
+# df_weather['temp_C'] = df_weather.temp - 273 
 ### ----------
 
 Freq_option = st.radio(
