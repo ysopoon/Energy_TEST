@@ -29,7 +29,7 @@ df_energy['time'] =pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime
 ### ----------
 
 Freq_option = st.radio(
-    "Show the Total Demand in frequency",
+    "Show the Generation in frequency",
     ("Yearly", "Quarterly", "Monthly", "Weekly", "Daily", "Hourly")
 )
 
@@ -52,11 +52,15 @@ df_energy_agg = AggDatabyFreq(Freq_option)
 tab1, tab2 = st.tabs(["Streamlit chart (default)", "Plotly chart"])
 with tab1:
     st.subheader("Using Streamlit chart")
+    st.title(f"Total {Freq_option} generation in Spain")
     st.line_chart(data = df_energy_agg,
-                  x = 'time', y = ['generation solar','generation fossil gas'])
+                  x = 'time', y = ['generation solar','generation fossil gas'],
+                  y_label = "MW")
 with tab2:
     st.subheader("Using Plotly chart")
     fig = go.Figure()
+    fig.update_layout(title=f"Total {Freq_option} generation in Spain",
+                      yaxis=dict(title=dict(text="MW")))
     for gen in ['generation solar','generation fossil gas']:
         fig.add_trace(go.Scatter(x=df_energy_agg['time'], 
                                 y=df_energy_agg[gen],
