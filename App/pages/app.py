@@ -8,22 +8,13 @@ import plotly.graph_objects as go
 ### ---------- 
 ### load datasets
 #@st.cache_data
-filepath = './Data'
+#filepath = './Data'
+filepath = 'https://github.com/ysopoon/Energy_TEST/blob/main/Data/'
 
-try:
-    df_energy = pd.read_csv(
-        os.path.join(filepath, 'energy_dataset.csv'), 
-        parse_dates=['time']
-    )
-    try:
-        df_energy = pd.read_csv(
-            os.path.join('../Data' 'energy_dataset.csv'), 
-            parse_dates=['time']
-        ) 
-    except:
-        print("sth is wrong")
-except:
-    print("many things are wrong")
+df_energy = pd.read_csv(
+    os.path.join(filepath, 'energy_dataset.csv'), 
+    parse_dates=['time']
+)
 pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
 
 # df_weather = pd.read_csv(
