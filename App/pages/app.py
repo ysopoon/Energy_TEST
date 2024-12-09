@@ -1,9 +1,11 @@
 import os
+import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 ### ---------- 
 ### load datasets
@@ -20,12 +22,15 @@ df_energy = pd.read_csv(
 )
 df_energy['time'] =pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
 
-# df_weather = pd.read_csv(
-#     os.path.join(filepath, 'weather_features.csv'), 
-#     parse_dates=['dt_iso']
-# )
-# df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
+df_weather = pd.read_csv(
+    os.path.join(filepath, 'weather_features.csv'), 
+    parse_dates=['dt_iso']
+)
+df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
 # df_weather['temp_C'] = df_weather.temp - 273 
+
+# drop duplicate rows in df_weather
+df_weather = df_weather.drop_duplicates(subset=['time', 'city_name'], keep='first').set_index('time').reset_index()
 ### ----------
 
 Freq_option = st.radio(
@@ -71,8 +76,70 @@ with tab2:
 
 
 
+st.subheader("Energy Generatoin and the weather")
+
+min_d = df_energy['time'].min()
+max_d = df_energy['time'].max()
+
+selected_date = st.date_input(
+    "Select your vacation for next year",
+    (max_d, max_d),
+    min_d,
+    max_d,
+    format="MM.DD.YYYY",
+)
+
+selected_gen = st.multiselect(
+    "Select Energy Generation",
+    [i for i in df_energy.columns if "generation" in i],
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    selected_weather = st.selectbox(
+        "Select the weather",
+        ["temp","temp_min","temp_max","pressure","humidity","wind_speed",
+         "wind_deg","rain_1h","rain_3h","snow_3h","clouds_all"],
+    )
+
+with col2:
+    selected_city = st.segmented_control(
+        "in City", 
+        df_weather.city_name.unique(), 
+        selection_mode="multi"
+    )
+
+def filter_df_by_date(df, date):
+    df['date'] = df['time'].dt.date
+    df_filtered = df[(df['date'] >= date[0]) & (df['date'] <= date[1])]
+    return df_filtered
 
 
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+#fig.update_layout(title=f"")
+df_energy_filtered = filter_df_by_date(df_energy, selected_date)
+for gen in selected_gen:
+    fig.add_trace(go.Scatter(
+        x=df_energy_filtered['time'], 
+        y=df_energy_filtered[gen],
+        mode='lines',
+        name=gen)
+        )
+fig.update_yaxes(title_text="MW", secondary_y=False)
+df_weather_filtered = filter_df_by_date(df_weather, selected_date)
+for weather in [selected_weather]:
+    for city in selected_city:
+        fig.add_trace(go.Scatter(
+            x=df_weather_filtered[df_weather_filtered['city_name'] == city]['time'], 
+            y=df_weather_filtered[df_weather_filtered['city_name'] == city][weather],
+            mode='lines',
+            name=f"{weather} {city}"),
+            secondary_y=True,
+            )
+
+
+st.plotly_chart(fig, theme=None)
 
 
 
