@@ -7,11 +7,15 @@ import plotly.graph_objects as go
 
 ### ---------- 
 ### load datasets
+import kagglehub
+
+# Download latest version
+filepath = kagglehub.dataset_download("nicholasjhana/energy-consumption-generation-prices-and-weather")
 #filepath = './Data'
 
+
 df_energy = pd.read_csv(
-    #os.path.join(filepath, 'energy_dataset.csv'), 
-    "https://github.com/ysopoon/Energy_TEST/blob/main/Data/energy_dataset.csv",
+    os.path.join(filepath, 'energy_dataset.csv'), 
     parse_dates=['time']
 )
 df_energy['time'] =pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
