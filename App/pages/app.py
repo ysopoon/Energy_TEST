@@ -7,7 +7,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-### ---------- 
+st.set_page_config(
+    page_title="Basic Analysis with Visualization",
+    #page_icon="👋",
+)
+
+
+
+### -------------------------------------------------- 
 ### load datasets
 import kagglehub
 
@@ -31,7 +38,11 @@ df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_dat
 
 # drop duplicate rows in df_weather
 df_weather = df_weather.drop_duplicates(subset=['time', 'city_name'], keep='first').set_index('time').reset_index()
-### ----------
+### --------------------------------------------------
+
+
+
+
 
 Freq_option = st.radio(
     "Show the Generation in frequency",
@@ -82,7 +93,7 @@ min_d = df_energy['time'].min()
 max_d = df_energy['time'].max()
 
 selected_date = st.date_input(
-    "Select your vacation for next year",
+    "Select the date you want to review",
     (max_d, max_d),
     min_d,
     max_d,
@@ -124,8 +135,9 @@ for gen in selected_gen:
         x=df_energy_filtered['time'], 
         y=df_energy_filtered[gen],
         mode='lines',
-        name=gen)
-        )
+        name=gen,
+        legendgroup='Energy')
+    )
 fig.update_yaxes(title_text="MW", secondary_y=False)
 df_weather_filtered = filter_df_by_date(df_weather, selected_date)
 for weather in [selected_weather]:
@@ -133,14 +145,20 @@ for weather in [selected_weather]:
         fig.add_trace(go.Scatter(
             x=df_weather_filtered[df_weather_filtered['city_name'] == city]['time'], 
             y=df_weather_filtered[df_weather_filtered['city_name'] == city][weather],
-            mode='lines',
-            name=f"{weather} {city}"),
+            mode='lines+markers',
+            name=f"{weather} {city}",
+            legendgroup='Weather'
+            ),
             secondary_y=True,
-            )
+        )
+
+# Update layout to show the second legend
+fig.update_layout(
+    legend=dict(traceorder='grouped'),
+    legend2=dict(x=1,y=1,traceorder='grouped')
+)
 
 
 st.plotly_chart(fig, theme=None)
-
-
 
 
