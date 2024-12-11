@@ -12,12 +12,16 @@ from langchain.callbacks import StreamlitCallbackHandler
 from langchain.chat_models import ChatOpenAI
 
 def main():
-    df_energy = st.session_state['df_energy']
-
     st.set_page_config(
         page_title="ChatBot",
         #page_icon="👋",
     )
+    
+    ### -------------------------------------------------- 
+    df_energy = st.session_state['df_energy']
+    df_weather = st.session_state['df_weather']
+    ### --------------------------------------------------
+
     st.title("🦜 LangChain: Chat with Pandas DataFrame")
 
     openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
@@ -41,7 +45,7 @@ def main():
 
         pandas_df_agent = create_pandas_dataframe_agent(
             llm,
-            df_energy,
+            [df_energy,df_weather],
             verbose=True,
             agent_type=AgentType.OPENAI_FUNCTIONS,
             handle_parsing_errors=True,

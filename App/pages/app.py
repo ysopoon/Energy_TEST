@@ -13,43 +13,18 @@ def main():
         #page_icon="👋",
     )
 
-
-
     ### -------------------------------------------------- 
-    ### load datasets
-    import kagglehub
-
-    # Download latest version
-    filepath = kagglehub.dataset_download("nicholasjhana/energy-consumption-generation-prices-and-weather")
-    #filepath = './Data'
-
-
-    df_energy = pd.read_csv(
-        os.path.join(filepath, 'energy_dataset.csv'), 
-        parse_dates=['time']
-    )
-    df_energy['time'] =pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
-
-    df_weather = pd.read_csv(
-        os.path.join(filepath, 'weather_features.csv'), 
-        parse_dates=['dt_iso']
-    )
-    df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
-    # df_weather['temp_C'] = df_weather.temp - 273 
-
-    # drop duplicate rows in df_weather
-    df_weather = df_weather.drop_duplicates(subset=['time', 'city_name'], keep='first').set_index('time').reset_index()
+    df_energy = st.session_state['df_energy']
+    df_weather = st.session_state['df_weather']
     ### --------------------------------------------------
-
-
-
-
+    
 
     Freq_option = st.radio(
         "Show the Generation in frequency",
         ("Yearly", "Quarterly", "Monthly", "Weekly", "Daily", "Hourly")
     )
 
+    @st.cache_data
     def AggDatabyFreq(freq):
         if freq == "Hourly":
             return df_energy
@@ -64,7 +39,6 @@ def main():
             return df_energy.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
 
     df_energy_agg = AggDatabyFreq(Freq_option)
-
 
     tab1, tab2 = st.tabs(["Streamlit chart (default)", "Plotly chart"])
     with tab1:
@@ -122,9 +96,11 @@ def main():
             selection_mode="multi"
         )
 
+    @st.cache_data
     def filter_df_by_date(df, date):
-        df['date'] = df['time'].dt.date
-        df_filtered = df[(df['date'] >= date[0]) & (df['date'] <= date[1])]
+        df_filtered = df.copy()
+        df_filtered['date'] = df_filtered['time'].dt.date
+        df_filtered = df_filtered[(df_filtered['date'] >= date[0]) & (df_filtered['date'] <= date[1])]
         return df_filtered
 
 
@@ -158,7 +134,6 @@ def main():
         legend=dict(traceorder='grouped'),
         legend2=dict(x=1,y=1,traceorder='grouped')
     )
-
 
     st.plotly_chart(fig, theme=None)
 

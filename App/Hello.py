@@ -14,6 +14,7 @@ def main():
 
     st.write("# Welcome to our app demo! 👋")
 
+    load_data()
 
     st.sidebar.success("Select a demo above.")
 
@@ -22,6 +23,8 @@ def main():
         testing using dataset in https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather/data
     """
     )
+
+
 
 @st.cache_data
 def load_data():
@@ -54,5 +57,4 @@ def load_data():
     ### --------------------------------------------------
 
 if __name__ == "__main__":
-    load_data()
     main()
