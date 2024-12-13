@@ -11,6 +11,9 @@ streamlit run <project folder>/App/Hello.py
 
 **Note**: If you want to use the chatbot, you will need to obtain your own OpenAI API Key. Make sure you have credit balance in your OpenAI account, else you will get error when you play with the chatbot. 
 
+**Note 2**: Before you run the app, edit App/pages/Chatbot_2.py in row 27 `openai_api_key = "< your OpenAI API Key here>"`. Save and run. 
+
+
 
 ## python packages
 you may need to run the following to install all neccessary packages before running the app. 
