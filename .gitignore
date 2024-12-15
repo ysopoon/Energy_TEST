@@ -1,4 +1,5 @@
 # Ignore the following
 **/.DS_Store
-
-
+**/__pycache__
+**/API_Keys
+*_API_Keys.txt

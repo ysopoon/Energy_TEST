@@ -14,15 +14,16 @@ def main():
 
     st.write("# Welcome to our app demo! 👋")
 
-    load_data()
-
-    st.sidebar.success("Select a demo above.")
-
     st.markdown(
         """
         testing using dataset in https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather/data
     """
     )
+
+    load_data()
+
+    st.sidebar.success("Select a demo above.")
+
 
 
 
