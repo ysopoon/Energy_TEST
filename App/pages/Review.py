@@ -1,6 +1,6 @@
 import os
 import datetime
-from datetime import datetime
+#from datetime import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -29,8 +29,10 @@ def read_entsoe_df(country):
     df.rename(columns=lambda x: x.replace(' - Actual Aggregated [MW]', ' [MW]'), inplace=True)
 
     df[['start_time', 'time']] = df['MTU'].str.split(' - ', expand=True)
-    df['time'] = df['time'].apply(lambda x: x.replace(' (UTC)','')).apply(lambda x: datetime.strptime(x, "%d.%m.%Y %H:%M"))
+    df['time'] = df['time'].apply(lambda x: x.replace(' (UTC)','')) \
+                            .apply(lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M"))
     df['time'] = pd.to_datetime(df['time'], utc=True)
+    df['date'] = df['time'].dt.date
 
     return df[[x for x in df.columns if x not in ['MTU','start_time']]]
 
@@ -96,6 +98,8 @@ def main():
 def dashboard():
     st.title("Visualize")
 
+    countries = ['FR','DE','IT','PT','ES']
+
     Freq_option = st.radio(
         "Show the Generation in frequency",
         ("Yearly", "Quarterly", "Monthly", "Weekly", "Daily", "Hourly")
@@ -113,13 +117,14 @@ def dashboard():
                 "Weekly":'W',
                 "Daily":'D',
             }
-            return df.copy().groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
+            df1 = df.copy().drop('date', axis=1)
+            return df1.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
 
 
     fig = go.Figure()
     fig.update_layout(title=f"Total {Freq_option} Solar generation",
                     yaxis=dict(title=dict(text="MW")))
-    for country in ['FR','DE','IT','PT','ES']:
+    for country in countries:
         if st.session_state["selected_"+country]:
             df_agg = AggDatabyFreq(st.session_state["df_energy_"+country], Freq_option)
             for gen in ['Solar [MW]']:
@@ -128,6 +133,30 @@ def dashboard():
                                 mode='lines',
                                 name=get_country_name(country)))
     st.plotly_chart(fig, theme=None)
+
+    st.title("Actual Generation per Production Type")
+    selected_countries = [country for country in countries if st.session_state["selected_"+country]]
+    d = st.date_input("Review the generation as of ", 
+                      value = datetime.date(2023, 4, 30), 
+                      min_value = datetime.date(2023, 1, 1),
+                      max_value = datetime.date(2023, 12, 31),)
+    chart_type = st.radio("Select the chart type", ['bar', 'heatmap'], horizontal=True)
+
+    for tab, country in zip(st.tabs(selected_countries), selected_countries):
+        with tab:
+            st.header(get_country_name(country))
+            df = st.session_state["df_energy_"+country]
+            df = df[df['date'] == d]
+            if chart_type == 'bar':
+                fig = px.bar(df, 
+                            x="time", 
+                            y=[x for x in df.columns if "MW" in x ]
+                            )
+            elif chart_type == 'heatmap':
+                fig = px.imshow(img= df[[x for x in df.columns if "MW" in x ]].T,
+                                x = df['time'],
+                                y = [x for x in df.columns if "MW" in x ])
+            st.plotly_chart(fig)
 
 
 def chatbot():
