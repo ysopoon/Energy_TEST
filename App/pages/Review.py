@@ -87,6 +87,7 @@ def main():
     if ES and "df_energy_ES" not in st.session_state:
         df_energy_ES = read_entsoe_df('ES')
         st.session_state['df_energy_ES'] = df_energy_ES
+        st.session_state['energy_gen'] = [x for x in df_energy_ES.columns if "MW" in x ]
 
     if display == "Dashboard":
         dashboard()
@@ -96,13 +97,41 @@ def main():
 
 
 def dashboard():
-    st.title("Visualize")
-
     countries = ['FR','DE','IT','PT','ES']
+    selected_countries = [country for country in countries if st.session_state["selected_"+country]]
+    
+    st.header("Actual Generation per Production Type")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        d = st.date_input("Review the generation as of ", 
+                        value = datetime.date(2023, 4, 30), 
+                        min_value = datetime.date(2023, 1, 1),
+                        max_value = datetime.date(2023, 12, 31),)
+    with col2:
+        chart_type = st.radio("Select the chart type", ['bar', 'heatmap'], horizontal=True)
+
+    for tab, country in zip(st.tabs(selected_countries), selected_countries):
+        with tab:
+            st.header(get_country_name(country))
+            df = st.session_state["df_energy_"+country]
+            df = df[df['date'] == d]
+            if chart_type == 'bar':
+                fig = px.bar(df, 
+                            x="time", 
+                            y=[x for x in df.columns if "MW" in x ]
+                            )
+            elif chart_type == 'heatmap':
+                fig = px.imshow(img= df[[x for x in df.columns if "MW" in x ]].T,
+                                x = df['time'],
+                                y = [x for x in df.columns if "MW" in x ])
+            st.plotly_chart(fig)
+    
 
     Freq_option = st.radio(
         "Show the Generation in frequency",
-        ("Yearly", "Quarterly", "Monthly", "Weekly", "Daily", "Hourly")
+        ("Hourly", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly"), 
+        horizontal=True
     )
 
     @st.cache_data
@@ -120,43 +149,27 @@ def dashboard():
             df1 = df.copy().drop('date', axis=1)
             return df1.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
 
+    selected_gen = st.selectbox(
+            "Select the energy",
+            st.session_state['energy_gen'],
+        )
 
     fig = go.Figure()
-    fig.update_layout(title=f"Total {Freq_option} Solar generation",
+    fig.update_layout(title=f"Total {Freq_option} {selected_gen.replace('[MW]', '')} generation",
                     yaxis=dict(title=dict(text="MW")))
     for country in countries:
         if st.session_state["selected_"+country]:
             df_agg = AggDatabyFreq(st.session_state["df_energy_"+country], Freq_option)
-            for gen in ['Solar [MW]']:
+            for gen in [selected_gen]:
                 fig.add_trace(go.Scatter(x=df_agg['time'], 
                                         y=df_agg[gen],
                                 mode='lines',
                                 name=get_country_name(country)))
+    if Freq_option not in ['Yearly', 'Quaterly']:
+        fig.update_layout(xaxis=dict(rangeslider=dict(visible=True),type="date" ))
     st.plotly_chart(fig, theme=None)
 
-    st.title("Actual Generation per Production Type")
-    selected_countries = [country for country in countries if st.session_state["selected_"+country]]
-    d = st.date_input("Review the generation as of ", 
-                      value = datetime.date(2023, 4, 30), 
-                      min_value = datetime.date(2023, 1, 1),
-                      max_value = datetime.date(2023, 12, 31),)
-    chart_type = st.radio("Select the chart type", ['bar', 'heatmap'], horizontal=True)
 
-    for tab, country in zip(st.tabs(selected_countries), selected_countries):
-        with tab:
-            st.header(get_country_name(country))
-            df = st.session_state["df_energy_"+country]
-            df = df[df['date'] == d]
-            if chart_type == 'bar':
-                fig = px.bar(df, 
-                            x="time", 
-                            y=[x for x in df.columns if "MW" in x ]
-                            )
-            elif chart_type == 'heatmap':
-                fig = px.imshow(img= df[[x for x in df.columns if "MW" in x ]].T,
-                                x = df['time'],
-                                y = [x for x in df.columns if "MW" in x ])
-            st.plotly_chart(fig)
 
 
 def chatbot():

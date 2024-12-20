@@ -16,7 +16,12 @@ def main():
 
     st.markdown(
         """
-        testing using dataset in https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather/data
+        The app and Chatbot pages provide review using using dataset in 
+        https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather/data.
+        
+
+        The Review page provide both visualization and chatbot feature to review the energy 
+        data in 2023 in 5 european countries using data collected from https://transparency.entsoe.eu/.
     """
     )
 
