@@ -14,27 +14,31 @@ from langchain.agents import AgentType
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.chat_models import ChatOpenAI
+#from langchain-community.chat_models import ChatOpenAI
 
 
 @st.cache_data 
 def read_entsoe_df(country):
     filepath = os.path.join(os.path.dirname( __file__ ),'../../Data')
-    df = pd.read_csv(os.path.join(filepath, f'energy_2023_{country}.csv'))
+    table = pd.DataFrame()
+    for i in [2022, 2023]:
+        df = pd.read_csv(os.path.join(filepath, f'energy_{i}_{country}.csv'))
 
-    df = df.replace('n/e', np.nan)
-    df[[x for x in df.columns if "MW" in x ]] = \
-        df[[x for x in df.columns if "MW" in x ]] \
-            .apply(lambda x: x.astype(float), axis=1) \
-    #         .interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)
-    df.rename(columns=lambda x: x.replace(' - Actual Aggregated [MW]', ' [MW]'), inplace=True)
+        df = df.replace('n/e', np.nan)
+        df[[x for x in df.columns if "MW" in x ]] = \
+            df[[x for x in df.columns if "MW" in x ]] \
+                .apply(lambda x: x.astype(float), axis=1) \
+        #         .interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)
+        df.rename(columns=lambda x: x.replace(' - Actual Aggregated [MW]', ' [MW]'), inplace=True)
 
-    df[['start_time', 'time']] = df['MTU'].str.split(' - ', expand=True)
-    df['time'] = df['time'].apply(lambda x: x.replace(' (UTC)','')) \
-                            .apply(lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M"))
-    df['time'] = pd.to_datetime(df['time'], utc=True)
-    df['date'] = df['time'].dt.date
-
-    return df[[x for x in df.columns if x not in ['MTU','start_time']]]
+        df[['start_time', 'time']] = df['MTU'].str.split(' - ', expand=True)
+        df['time'] = df['time'].apply(lambda x: x.replace(' (UTC)','')) \
+                                .apply(lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M"))
+        df['time'] = pd.to_datetime(df['time'], utc=True)
+        df['date'] = df['time'].dt.date
+        df = df[[x for x in df.columns if x not in ['MTU','start_time']]]
+        table = df if table.empty else pd.concat([table,df])
+    return table
 
 @st.cache_data
 def get_openai_api_key():
@@ -55,11 +59,11 @@ def get_country_name(abb):
 
 def main():
     st.set_page_config(
-        page_title="Review 2023 data",
+        page_title="Review entsoe data",
         #page_icon="👋",
     )
 
-    st.title("Basic Analysis with Visualization using 2023 data")
+    st.title("Basic Analysis with Visualization using entsoe data")
     st.write("using data from https://transparency.entsoe.eu/")
     st.write("select the countries you want to review on the left.")
 
@@ -106,7 +110,7 @@ def dashboard():
     with col1:
         d = st.date_input("Review the generation as of ", 
                         value = datetime.date(2023, 4, 30), 
-                        min_value = datetime.date(2023, 1, 1),
+                        min_value = datetime.date(2022, 1, 1),
                         max_value = datetime.date(2023, 12, 31),)
     with col2:
         chart_type = st.radio("Select the chart type", ['bar', 'heatmap'], horizontal=True)
@@ -180,8 +184,11 @@ def chatbot():
         if st.session_state["selected_"+country]:
             all_countries_df.append(st.session_state["df_energy_"+country])
             
+    try:
+        openai_api_key = st.secrets["OPENAI_API_KEY"]
+    except:
+        openai_api_key = get_openai_api_key()
 
-    openai_api_key = get_openai_api_key()
     if "messages" not in st.session_state or st.sidebar.button("Clear conversation history"):
         st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
 

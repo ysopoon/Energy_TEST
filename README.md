@@ -30,6 +30,7 @@ pip install kagglehub
 pip install tabulate
 pip install langchain
 pip install langchain-experimental
+pip install -U langchain-community
 pip install openai
 
 # to generate the plots

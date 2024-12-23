@@ -21,7 +21,7 @@ def main():
         
 
         The Review page provide both visualization and chatbot feature to review the energy 
-        data in 2023 in 5 european countries using data collected from https://transparency.entsoe.eu/.
+        data in 5 european countries using data collected from https://transparency.entsoe.eu/.
     """
     )
 
@@ -36,8 +36,9 @@ def main():
 def load_data():
     ### load datasets
     # Download latest version
-    import kagglehub
-    filepath = kagglehub.dataset_download("nicholasjhana/energy-consumption-generation-prices-and-weather")
+    #import kagglehub
+    #filepath = kagglehub.dataset_download("nicholasjhana/energy-consumption-generation-prices-and-weather")
+    filepath = os.path.join(os.path.dirname( __file__ ),'../Data')
 
     ## To share the same dataframe between pages
     # Initialization session state
