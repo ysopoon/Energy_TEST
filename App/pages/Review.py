@@ -69,7 +69,7 @@ def main():
 
     display = st.sidebar.radio("Select", ["Dashboard", "Chatbot"])
 
-    st.sidebar.success("Select the countries")
+    st.sidebar.text("Select the countries")
     FR = st.sidebar.checkbox("France", key = "selected_FR")
     DE = st.sidebar.checkbox("Germany", key = "selected_DE")
     IT = st.sidebar.checkbox("Italy", key = "selected_IT")
@@ -132,26 +132,25 @@ def dashboard():
             st.plotly_chart(fig)
     
 
+    st.header("Compare Actual Generation by Production Type and Frequency")
     Freq_option = st.radio(
         "Show the Generation in frequency",
         ("Hourly", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly"), 
-        horizontal=True
+        horizontal=True,
     )
 
     @st.cache_data
     def AggDatabyFreq(df, freq):
-        if freq == "Hourly":
-            return df.copy()
-        else:
-            freq_dict = {
-                "Yearly":'YE',
-                "Quarterly":'QE',
-                "Monthly":'ME',
-                "Weekly":'W',
-                "Daily":'D',
-            }
-            df1 = df.copy().drop('date', axis=1)
-            return df1.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
+        freq_dict = {
+            "Yearly":'YE',
+            "Quarterly":'QE',
+            "Monthly":'ME',
+            "Weekly":'W',
+            "Daily":'D',
+            "Hourly":'h',
+        }
+        df1 = df.copy().drop('date', axis=1)
+        return df1.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
 
     selected_gen = st.selectbox(
             "Select the energy",
@@ -161,14 +160,13 @@ def dashboard():
     fig = go.Figure()
     fig.update_layout(title=f"Total {Freq_option} {selected_gen.replace('[MW]', '')} generation",
                     yaxis=dict(title=dict(text="MW")))
-    for country in countries:
-        if st.session_state["selected_"+country]:
-            df_agg = AggDatabyFreq(st.session_state["df_energy_"+country], Freq_option)
-            for gen in [selected_gen]:
-                fig.add_trace(go.Scatter(x=df_agg['time'], 
-                                        y=df_agg[gen],
-                                mode='lines',
-                                name=get_country_name(country)))
+    for country in selected_countries:
+        df_agg = AggDatabyFreq(st.session_state["df_energy_"+country], Freq_option)
+        for gen in [selected_gen]:
+            fig.add_trace(go.Scatter(x=df_agg['time'], 
+                                    y=df_agg[gen],
+                            mode='lines',
+                            name=get_country_name(country)))
     if Freq_option not in ['Yearly', 'Quaterly']:
         fig.update_layout(xaxis=dict(rangeslider=dict(visible=True),type="date" ))
     st.plotly_chart(fig, theme=None)
@@ -176,21 +174,31 @@ def dashboard():
 
 
 
+
+
 def chatbot():
     st.title("🦜 LangChain: Chat with Pandas DataFrame")
 
+    # create a list of data frame that we want to review
     all_countries_df = []
     for country in ['FR','DE','IT','PT','ES']:
         if st.session_state["selected_"+country]:
             all_countries_df.append(st.session_state["df_energy_"+country])
             
     try:
-        openai_api_key = st.secrets["OPENAI_API_KEY"]
+        openai_api_key = st.secrets["OPENAI_API_KEY"]   
     except:
-        openai_api_key = get_openai_api_key()
+        try:
+            openai_api_key = get_openai_api_key()
+        except:
+            st.info("Please add your OpenAI API key to continue.")
+            st.stop() 
+
 
     if "messages" not in st.session_state or st.sidebar.button("Clear conversation history"):
-        st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+        st.session_state["messages"] = [{"role": "assistant", 
+                                         #"content": "How can I help you?"}]
+                                         "content": "What do you want to know about the energy generation in you selected countries?"}]
 
     for msg in st.session_state.messages:
         st.chat_message(msg["role"]).write(msg["content"])
