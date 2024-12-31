@@ -13,8 +13,19 @@ from langchain.agents import AgentType
 #from langchain.agents import create_pandas_dataframe_agent
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain.callbacks import StreamlitCallbackHandler
-from langchain.chat_models import ChatOpenAI
+
+
+from langchain_openai import ChatOpenAI
+#from langchain.chat_models import ChatOpenAI
 #from langchain-community.chat_models import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+# from langchain_core.messages import AIMessage, HumanMessage
+# from langgraph.checkpoint.memory import MemorySaver
+# from langgraph.graph import START, MessagesState, StateGraph
+# from langchain.memory import ChatMessageHistory
+# from langchain_core.runnables.history import RunnableWithMessageHistory
+
 
 
 @st.cache_data 
@@ -157,48 +168,68 @@ def dashboard():
             st.session_state['energy_gen'],
         )
 
-    fig = go.Figure()
-    fig.update_layout(title=f"Total {Freq_option} {selected_gen.replace('[MW]', '')} generation",
+    fig1 = go.Figure()
+    fig1.update_layout(title=f"Total {Freq_option} {selected_gen.replace('[MW]', '')} generation",
                     yaxis=dict(title=dict(text="MW")))
     for country in selected_countries:
         df_agg = AggDatabyFreq(st.session_state["df_energy_"+country], Freq_option)
         for gen in [selected_gen]:
-            fig.add_trace(go.Scatter(x=df_agg['time'], 
+            fig1.add_trace(go.Scatter(x=df_agg['time'], 
                                     y=df_agg[gen],
                             mode='lines',
                             name=get_country_name(country)))
     if Freq_option not in ['Yearly', 'Quaterly']:
-        fig.update_layout(xaxis=dict(rangeslider=dict(visible=True),type="date" ))
-    st.plotly_chart(fig, theme=None)
-
-
-
-
+        fig1.update_layout(xaxis=dict(rangeslider=dict(visible=True),type="date" ))
+    st.plotly_chart(fig1, theme=None)
 
 
 def chatbot():
-    st.title("🦜 LangChain: Chat with Pandas DataFrame")
+    #st.title("🦜 LangChain: Chat with Pandas DataFrame") 
+    st.write("Review the data using Chatbot")
 
     # create a list of data frame that we want to review
     all_countries_df = []
     for country in ['FR','DE','IT','PT','ES']:
         if st.session_state["selected_"+country]:
             all_countries_df.append(st.session_state["df_energy_"+country])
-            
-    try:
-        openai_api_key = st.secrets["OPENAI_API_KEY"]   
-    except:
-        try:
-            openai_api_key = get_openai_api_key()
-        except:
-            st.info("Please add your OpenAI API key to continue.")
-            st.stop() 
 
+    LLM_option = st.selectbox(
+        "What LLM model do you want to use?",
+        ("OpenAI GPT", "Google Gemini"),
+        label_visibility="hidden"
+    )
+
+    if LLM_option == "OpenAI GPT":
+        # get the OpenAI API Key        
+        try:
+            openai_api_key = st.secrets["OPENAI_API_KEY"]   
+        except:
+            try:
+                openai_api_key = get_openai_api_key()
+            except:
+                st.info("Please add your OpenAI API key to continue.")
+                st.stop() 
+        llm = ChatOpenAI(
+            temperature=0, model="gpt-4o-mini", openai_api_key=openai_api_key, streaming=True
+        )
+        agent_type=AgentType.OPENAI_FUNCTIONS
+    elif LLM_option == "Google Gemini":
+        # get the Google API Key        
+        try:
+            google_api_key = st.secrets["GOOGLE_API_KEY"]   
+        except:
+            st.info("Please add your Google API key to continue.")
+            st.stop() 
+        llm = ChatGoogleGenerativeAI(    
+            google_api_key=google_api_key, model="gemini-1.5-pro"
+        )
+        agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION
+    
 
     if "messages" not in st.session_state or st.sidebar.button("Clear conversation history"):
         st.session_state["messages"] = [{"role": "assistant", 
                                          #"content": "How can I help you?"}]
-                                         "content": "What do you want to know about the energy generation in you selected countries?"}]
+                                         "content": "What do you want to know about the energy generation in the selected countries?"}]
 
     for msg in st.session_state.messages:
         st.chat_message(msg["role"]).write(msg["content"])
@@ -207,19 +238,11 @@ def chatbot():
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.chat_message("user").write(prompt)
 
-        if not openai_api_key:
-            st.info("Please add your OpenAI API key to continue.")
-            st.stop()
-
-        llm = ChatOpenAI(
-            temperature=0, model="gpt-4o-mini", openai_api_key=openai_api_key, streaming=True
-        )
-
         pandas_df_agent = create_pandas_dataframe_agent(
             llm,
             all_countries_df,
             verbose=True,
-            agent_type=AgentType.OPENAI_FUNCTIONS,
+            agent_type=agent_type,
             handle_parsing_errors=True,
             allow_dangerous_code=True,
         )    
@@ -227,8 +250,11 @@ def chatbot():
         with st.chat_message("assistant"):
             st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
             response = pandas_df_agent.run(st.session_state.messages, callbacks=[st_cb])
+            #output = pandas_df_agent.invoke({"input": prompt}, {"callbacks": [st_cb]})
+            #response = output["output"]
             st.session_state.messages.append({"role": "assistant", "content": response})
             st.write(response)
+
 
 
 if __name__ == "__main__":

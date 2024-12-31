@@ -12,8 +12,7 @@ streamlit run <project folder>/App/Hello.py
 **Note**: If you want to use the chatbot, you will need to obtain your own OpenAI API Key. Make sure you have credit balance in your OpenAI account, else you will get error when you play with the chatbot. 
 
 **Note 2**: 
-- page Chatbot will ask for your API Key
-- There is another Chatbot in the **Review** page. This bot uses key saved to __App/API_keys/OpenAI_API_Keys.txt__. Make sure you save your API key in the txt file before running the app. 
+- There is Chatbot in the **Review** page. This bot uses key saved to ***.streamlit/secrets.toml*** or *App/API_keys/OpenAI_API_Keys.txt*. Make sure you save your API key in the file before running the app. 
 
 
 
@@ -23,15 +22,15 @@ you may need to run the following to install all neccessary packages before runn
 # to run the streamlit app
 pip install streamlit
 
-# to load the data from Kaggle
-pip install kagglehub
-
 # to run the chatbot 
 pip install tabulate
 pip install langchain
 pip install langchain-experimental
-pip install -U langchain-community
+## pip install -U langchain-community
 pip install openai
+pip install langchain_openai
+## pip install langchain-core langgraph>0.2.27
+pip install langchain_google_genai
 
 # to generate the plots
 pip install plotly

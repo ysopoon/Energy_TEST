@@ -9,59 +9,18 @@ def main():
         page_icon="👋",
     )
 
-    st.title('DEMO -- Energy Generation and Wheather in Spain')
-    st.subheader('testing')
+    st.title('DEMO -- Energy Generation')
+    st.subheader('using entsoe data')
 
     st.write("# Welcome to our app demo! 👋")
 
     st.markdown(
         """
-        The app and Chatbot pages provide review using using dataset in 
-        https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather/data.
-        
-
         The Review page provide both visualization and chatbot feature to review the energy 
         data in 5 european countries using data collected from https://transparency.entsoe.eu/.
     """
     )
 
-    load_data()
-
-    st.sidebar.success("Select a demo above.")
-
-
-
-
-@st.cache_data
-def load_data():
-    ### load datasets
-    # Download latest version
-    #import kagglehub
-    #filepath = kagglehub.dataset_download("nicholasjhana/energy-consumption-generation-prices-and-weather")
-    filepath = os.path.join(os.path.dirname( __file__ ),'../Data')
-
-    ## To share the same dataframe between pages
-    # Initialization session state
-    if 'df_energy' not in st.session_state:
-        df_energy = pd.read_csv(
-            os.path.join(filepath, 'energy_dataset.csv'), 
-            parse_dates=['time']
-        )
-        df_energy['time'] =pd.to_datetime(df_energy['time'], utc=True) #, infer_datetime_format=True)
-        st.session_state['df_energy'] = df_energy
-    
-    if 'df_weather' not in st.session_state:
-        df_weather = pd.read_csv(
-            os.path.join(filepath, 'weather_features.csv'), 
-            parse_dates=['dt_iso']
-        )
-        df_weather['time'] = pd.to_datetime(df_weather['dt_iso'], utc=True) #, infer_datetime_format=True)
-        # df_weather['temp_C'] = df_weather.temp - 273 
-
-        # drop duplicate rows in df_weather
-        df_weather = df_weather.drop_duplicates(subset=['time', 'city_name'], keep='first').set_index('time').reset_index()
-        st.session_state['df_weather'] = df_weather
-    ### --------------------------------------------------
 
 if __name__ == "__main__":
     main()
