@@ -1,3 +1,4 @@
+# Importing necessary libraries
 import os
 import datetime
 #from datetime import datetime
@@ -30,11 +31,13 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 @st.cache_data 
 def read_entsoe_df(country):
+    # Load energy data for the specified country from CSV files
     filepath = os.path.join(os.path.dirname( __file__ ),'../../Data')
     table = pd.DataFrame()
     for i in [2022, 2023]:
         df = pd.read_csv(os.path.join(filepath, f'energy_{i}_{country}.csv'))
 
+        # Replace 'n/e' with NaN and convert columns with "MW" to float
         df = df.replace('n/e', np.nan)
         df[[x for x in df.columns if "MW" in x ]] = \
             df[[x for x in df.columns if "MW" in x ]] \
@@ -42,6 +45,7 @@ def read_entsoe_df(country):
         #         .interpolate(method='linear', limit_direction='forward', inplace=True, axis=0)
         df.rename(columns=lambda x: x.replace(' - Actual Aggregated [MW]', ' [MW]'), inplace=True)
 
+        # Parse date and time columns
         df[['start_time', 'time']] = df['MTU'].str.split(' - ', expand=True)
         df['time'] = df['time'].apply(lambda x: x.replace(' (UTC)','')) \
                                 .apply(lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M"))
@@ -53,12 +57,14 @@ def read_entsoe_df(country):
 
 @st.cache_data
 def get_openai_api_key():
+    # Retrieve the OpenAI API key from a local file
     filepath = os.path.join(os.path.dirname( __file__ ),'../API_keys')
     with open(os.path.join(filepath, 'OpenAI_API_Keys.txt'), 'r') as file:
         api_key = file.readlines()
     return api_key[0]
 
 def get_country_name(abb):
+    # Map country abbreviations to full names
     country_dict = {
         "FR":'France',
         "DE":'Germany',
@@ -69,6 +75,7 @@ def get_country_name(abb):
     return country_dict[abb]
 
 def main():
+    # Streamlit page configuration
     st.set_page_config(
         page_title="Review entsoe data",
         #page_icon="👋",
@@ -78,6 +85,7 @@ def main():
     st.write("using data from https://transparency.entsoe.eu/")
     st.write("select the countries you want to review on the left.")
 
+    # Sidebar options for dashboard or chatbot
     display = st.sidebar.radio("Select", ["Dashboard", "Chatbot"])
 
     st.sidebar.text("Select the countries")
@@ -87,6 +95,7 @@ def main():
     PT = st.sidebar.checkbox("Portugal", key = "selected_PT")
     ES = st.sidebar.checkbox("Spain", value = True, key = "selected_ES")
 
+    # Load data into session state for selected countries
     if FR and "df_energy_FR" not in st.session_state:
         df_energy_FR = read_entsoe_df('FR')
         st.session_state['df_energy_FR'] = df_energy_FR
@@ -104,6 +113,13 @@ def main():
         st.session_state['df_energy_ES'] = df_energy_ES
         st.session_state['energy_gen'] = [x for x in df_energy_ES.columns if "MW" in x ]
 
+    # Validate if at least one country is selected
+    if not (FR or DE or IT or PT or ES):
+        # Show a warning message if no countries are selected
+        st.warning("Please select at least one country to display the data.")
+        return
+
+    # Display selected section (Dashboard or Chatbot)
     if display == "Dashboard":
         dashboard()
     else:
@@ -112,38 +128,59 @@ def main():
 
 
 def dashboard():
-    countries = ['FR','DE','IT','PT','ES']
+    countries = ['FR', 'DE', 'IT', 'PT', 'ES']
+    
+    # Get selected countries
     selected_countries = [country for country in countries if st.session_state["selected_"+country]]
     
     st.header("Actual Generation per Production Type")
-
+    
+    # Create widgets for date selection and chart type
     col1, col2 = st.columns(2)
     with col1:
-        d = st.date_input("Review the generation as of ", 
-                        value = datetime.date(2023, 4, 30), 
-                        min_value = datetime.date(2022, 1, 1),
-                        max_value = datetime.date(2023, 12, 31),)
+        d = st.date_input(
+            "Review the generation as of ",
+            value=datetime.date(2023, 4, 30),
+            min_value=datetime.date(2022, 1, 1),
+            max_value=datetime.date(2023, 12, 31),
+        )
     with col2:
-        chart_type = st.radio("Select the chart type", ['bar', 'heatmap'], horizontal=True)
+        # Chart type selection
+        chart_type = st.radio(
+            "Select the chart type",
+            ["bar", "heatmap"],
+            horizontal=True
+        )
 
+    # Create tabs for selected countries
     for tab, country in zip(st.tabs(selected_countries), selected_countries):
         with tab:
+            # Show country name as header in each tab
             st.header(get_country_name(country))
+            
+            # Filter DataFrame by selected date
             df = st.session_state["df_energy_"+country]
             df = df[df['date'] == d]
+
+            # Display data in the selected chart type (bar or heatmap)
             if chart_type == 'bar':
-                fig = px.bar(df, 
-                            x="time", 
-                            y=[x for x in df.columns if "MW" in x ]
-                            )
+                fig = px.bar(
+                    df,
+                    x="time",
+                    y=[x for x in df.columns if "MW" in x]
+                )
             elif chart_type == 'heatmap':
-                fig = px.imshow(img= df[[x for x in df.columns if "MW" in x ]].T,
-                                x = df['time'],
-                                y = [x for x in df.columns if "MW" in x ])
+                fig = px.imshow(
+                    img=df[[x for x in df.columns if "MW" in x]].T,
+                    x=df['time'],
+                    y=[x for x in df.columns if "MW" in x]
+                )
+            # Display the chart in the corresponding tab
             st.plotly_chart(fig)
     
 
     st.header("Compare Actual Generation by Production Type and Frequency")
+    # Frequency options for data aggregation
     Freq_option = st.radio(
         "Show the Generation in frequency",
         ("Hourly", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly"), 
@@ -163,11 +200,13 @@ def dashboard():
         df1 = df.copy().drop('date', axis=1)
         return df1.groupby(pd.Grouper(key='time', axis=0,freq=freq_dict[freq])).sum().reset_index()
 
+    # Dropdown to select energy type
     selected_gen = st.selectbox(
             "Select the energy",
             st.session_state['energy_gen'],
         )
 
+    # Create and display the aggregated data chart
     fig1 = go.Figure()
     fig1.update_layout(title=f"Total {Freq_option} {selected_gen.replace('[MW]', '')} generation",
                     yaxis=dict(title=dict(text="MW")))
@@ -245,6 +284,16 @@ def chatbot():
             agent_type=agent_type,
             handle_parsing_errors=True,
             allow_dangerous_code=True,
+            suffix = """
+            when filtering by the 'date' column, you should compare using datetime format.
+            for example, if filter for Dec 1, 2023, do:
+            `df['date'] == datetime.date(2023, 12, 1)`
+
+            the 'Area' columns is in "country (country abb)" format. 
+            for example, if it's Spain data, you will have "Spain (ES)".
+            when filtering by the 'Area' column, e.g. filtering by Spain, do:
+            `df['Area'].str.contains('Spain')`
+            """
         )    
 
         with st.chat_message("assistant"):
